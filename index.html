@@ -94,10 +94,12 @@
 <main>
   <!-- LOAD -->
   <section id="loader">
-    <div class="hint">Batches live on Drive in <b>Sebastian/Dup Review/batches/</b> — paste a Drive file ID
-    or share link, or open a link like
-    <code>https://jpavia10.github.io/dup-review/?drive=FILE_ID</code>.<br>
-    Batch format: <code>{"batch":"B7","pairs":[{"del":{...},"keep":{...},"note":"..."}]}</code> —
+    <div class="hint">The review queue is <b>one file</b> on Drive:
+    <b>Sebastian/Dup Review/batches/queue.json</b> — paste its file ID or share link,
+    or open a link like <code>https://jpavia10.github.io/dup-review/?drive=FILE_ID</code>.
+    The page takes the first 10 pairs; reviewed pairs are removed from the queue
+    when the decision code is processed.<br>
+    Queue format: <code>{"queue":"dup-review","pairs":[{"del":{...},"keep":{...},"note":"..."}]}</code> —
     each side needs <code>id</code> (Drive file id), <code>name</code>, <code>size</code>,
     <code>md5</code>, <code>path</code>, <code>w</code>, <code>h</code>, <code>created</code>.
     (Raw JSON paste still works below as a fallback.)</div>
@@ -167,8 +169,8 @@ function capHTML(s){
     (s.id?`<a href="${view(s.id)}" target="_blank" rel="noopener">open in Drive ↗</a>`:"");
 }
 function render(){
-  const p=batch.pairs[idx], L=swapped?p.keep:p.del, R=swapped?p.del:p.keep;
-  $("ptitle").textContent=`Pair ${idx+1} / ${batch.pairs.length}`;
+  const p=batch.window[idx], L=swapped?p.keep:p.del, R=swapped?p.del:p.keep;
+  $("ptitle").textContent=`Pair ${idx+1} / ${batch.window.length}`;
   $("pnote").textContent=p.note||"";
   $("swapnote").textContent=swapped?"↔ swapped — RIGHT will be deleted":"";
   $("imgL").src=thumb(L.id); $("imgR").src=thumb(R.id);
@@ -176,18 +178,18 @@ function render(){
   $("imgL").onerror=()=>{$("imgL").alt="thumbnail blocked — use Drive link below";};
   $("imgR").onerror=()=>{$("imgR").alt="thumbnail blocked — use Drive link below";};
   $("capL").innerHTML=capHTML(L); $("capR").innerHTML=capHTML(R);
-  $("bar").style.width=(idx/batch.pairs.length*100)+"%";
-  $("cnt").textContent=`${batch.id} · ${idx+1}/${batch.pairs.length}`;
+  $("bar").style.width=(idx/batch.window.length*100)+"%";
+  $("cnt").textContent=`${batch.id} · ${idx+1}/${batch.window.length}`+(batch.isQueue?` · ${batch.queueTotal} in queue`:"");
 }
 function decide(d){
   decisions[idx]=d; swapped=false; idx++;
-  if(idx>=batch.pairs.length) finish(); else render();
+  if(idx>=batch.window.length) finish(); else render();
 }
 function finish(){
   $("pairview").style.display="none"; $("actions").style.display="none";
-  const code=`${batch.id}:`+decisions.join("");
+  const code=batch.isQueue?`Q:${batch.qhash}:`+decisions.join(""):`${batch.id}:`+decisions.join("");
   $("code").textContent=code;
-  $("sumlist").innerHTML=batch.pairs.map((p,i)=>{
+  $("sumlist").innerHTML=batch.window.map((p,i)=>{
     const d=decisions[i], lbl=d==="A"?'<span class="A">DELETE left</span>':d==="S"?'<span class="S">DELETE right (swapped)</span>':'<span class="X">skip</span>';
     const dead=d==="A"?p.del.name:d==="S"?p.keep.name:"—";
     return `<li><b>${i+1}.</b> ${lbl} · <span style="word-break:break-all">${dead}</span></li>`;
@@ -197,7 +199,16 @@ function finish(){
   window.scrollTo(0,0);
 }
 function startBatch(b){
-  batch=b; idx=0; decisions=new Array(b.pairs.length).fill("X"); swapped=false;
+  b.allPairs=b.pairs||[];
+  b.window=b.allPairs.slice(0,10);
+  if(!b.window.length){ $("loaderr").textContent="Queue is empty — nothing to review right now. Check back later."; return; }
+  batch=b; idx=0; decisions=new Array(b.window.length).fill("X"); swapped=false;
+  batch.isQueue=!!b.queue;
+  batch.id=b.queue?"Q":(b.batch||b.id||"B?");
+  let h=0; const s=b.window.map(p=>((p.del&&p.del.id)||"")+"|"+((p.keep&&p.keep.id)||"")).join(";");
+  for(let k=0;k<s.length;k++){ h=((h*31)+s.charCodeAt(k))>>>0; }
+  batch.qhash=h.toString(16).padStart(8,"0").slice(-4);
+  batch.queueTotal=b.allPairs.length;
   $("loader").style.display="none"; $("doneview").style.display="none";
   $("pairview").style.display="block"; $("actions").style.display="block";
   render(); window.scrollTo(0,0);
@@ -260,7 +271,7 @@ $("btnAccept").onclick=()=>decide("A");
 $("btnSkip").onclick=()=>decide("X");
 // Swap is two-tap: first tap flips the preview, second tap confirms delete-right.
 $("btnSwap").onclick=()=>{ if(!swapped){swapped=true;render();} else decide("S"); };
-$("btnAll").onclick=()=>{while(idx<batch.pairs.length){decisions[idx]="A";idx++;}finish();};
+$("btnAll").onclick=()=>{while(idx<batch.window.length){decisions[idx]="A";idx++;}finish();};
 $("btnCopy").onclick=async()=>{
   const t=$("code").textContent;
   try{await navigator.clipboard.writeText(t);$("btnCopy").textContent="Copied ✓";}
