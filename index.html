@@ -230,9 +230,9 @@ function driveIdFrom(s){
 async function loadFromDrive(raw){
   $("loaderr").textContent="Loading queue…";
   const id=driveIdFrom(raw);
-  if(!id){$("l
+  if(!id){$("loaderr").textContent="Couldn't find a Drive file ID in that.";return;}
   const urls=[
-        `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=AIzaSyCpNMco1exjWLyc92HVxXP0CeqpVUE4wxs`,
+    `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=AIzaSyCpNMco1exjWLyc92HVxXP0CeqpVUE4wxs`,
     `https://drive.usercontent.google.com/download?id=${id}`,
     `https://drive.usercontent.google.com/u/0/uc?id=${id}&export=download`,
     `https://drive.google.com/uc?export=download&id=${id}`
