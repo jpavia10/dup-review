@@ -135,7 +135,7 @@
   <!-- DONE -->
   <section id="doneview">
     <h2 style="margin:6px 0;">Batch complete</h2>
-    <p>Paste this code back to Sebastian — he'll trash the losers as one grouped batch.</p>
+    <p id="sendstat">Sending your decisions to Sebastian…</p>
     <div class="code" id="code"></div>
     <button id="btnCopy">Copy code</button>
     <ul id="sumlist"></ul>
@@ -169,7 +169,7 @@ function capHTML(s){
 }
 function render(){
   const p=batch.window[idx], L=swapped?p.keep:p.del, R=swapped?p.del:p.keep;
-  $("ptitle").textContent=`Pair ${idx+1} / ${batch.window.length}`;
+  $("ptitle").textContent=`Pair ${idx+1} / ${batch.window.length}`;  try{
   $("pnote").textContent=p.note||"";
   $("swapnote").textContent=swapped?"↔ swapped — RIGHT will be deleted":"";
   $("imgL").src=thumb(L.id); $("imgR").src=thumb(R.id);
@@ -187,7 +187,12 @@ function decide(d){
 function finish(){
   $("pairview").style.display="none"; $("actions").style.display="none";
   const code=batch.isQueue?`Q:${batch.qhash}:`+decisions.join(""):`${batch.id}:`+decisions.join("");
-  $("code").textContent=code;
+  $("code").textContent=code; 
+    try{
+    fetch("https://script.google.com/macros/s/AKfycbxUYJDgI4L_qY8oypPXRfYWpNmlEfdh15Cc6BkqTV3pvap1TgQ5qFRzPqGWJ4xNykknpg/exec",{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:"code="+encodeURIComponent(code)});
+    $("sendstat").textContent="Sent to Sebastian ✓ — he'll confirm here when it's done.";
+  }catch(e){ $("sendstat").textContent="Auto-send failed — copy the code and paste it to Sebastian instead."; }
+  
   $("sumlist").innerHTML=batch.window.map((p,i)=>{
     const d=decisions[i], lbl=d==="A"?'<span class="A">DELETE left</span>':d==="S"?'<span class="S">DELETE right (swapped)</span>':'<span class="X">skip</span>';
     const dead=d==="A"?p.del.name:d==="S"?p.keep.name:"—";
@@ -195,7 +200,7 @@ function finish(){
   }).join("");
   $("doneview").style.display="block";
   $("bar").style.width="100%";
-  window.scrollTo(0,0);
+  window.scrollTo(0,0);  try{
 }
 function startBatch(b){
   b.allPairs=b.pairs||[];
