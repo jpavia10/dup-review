@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dup Review — 10-pair batches</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#161a23; --panel2:#1d2330; --line:#2a3142;
+    --txt:#e8eaf0; --mut:#9aa3b5;
+    --red:#ff5d5d; --red-dim:rgba(255,93,93,.14);
+    --grn:#3ddc84; --grn-dim:rgba(61,220,132,.13);
+    --amber:#ffbe3d; --acc:#7aa2ff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  header{position:sticky;top:0;z-index:10;background:rgba(13,15,20,.96);
+    border-bottom:1px solid var(--line);padding:10px 14px;}
+  header .row{display:flex;align-items:center;gap:10px;}
+  header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.3px;}
+  header h1 .b{color:var(--acc);}
+  .prog{flex:1;height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;}
+  .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#9d7aff);transition:width .25s;}
+  .cnt{font-size:13px;color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  main{max-width:1060px;margin:0 auto;padding:14px 14px 120px;}
+  #loader textarea{width:100%;min-height:130px;background:var(--panel);color:var(--txt);
+    border:1px solid var(--line);border-radius:10px;padding:10px;font-family:ui-monospace,monospace;font-size:12px;}
+  #loader .hint{color:var(--mut);font-size:13px;margin:8px 0 14px;line-height:1.5;}
+  #loader .hint code{color:var(--acc);font-size:12px;}
+  #pairview{display:none;}
+  .pairhead{display:flex;align-items:baseline;gap:10px;margin:2px 0 10px;}
+  .pairhead h2{margin:0;font-size:18px;}
+  .note{font-size:13px;color:var(--amber);}
+  .imgs{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media (max-width:640px){.imgs{grid-template-columns:1fr;}}
+  figure{margin:0;background:var(--panel);border:2px solid var(--line);border-radius:12px;overflow:hidden;}
+  figure.del{border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim);}
+  figure.keep{border-color:var(--grn);box-shadow:0 0 0 3px var(--grn-dim);}
+  figure .tag{display:flex;justify-content:space-between;align-items:center;
+    padding:8px 12px;font-weight:800;font-size:14px;letter-spacing:.5px;}
+  figure.del .tag{background:var(--red-dim);color:var(--red);}
+  figure.keep .tag{background:var(--grn-dim);color:var(--grn);}
+  figure img{width:100%;display:block;aspect-ratio:4/3;object-fit:contain;background:#000;}
+  figcaption{padding:8px 12px 10px;font-size:12.5px;color:var(--mut);line-height:1.65;}
+  figcaption .fn{color:var(--txt);font-weight:600;word-break:break-all;}
+  figcaption a{color:var(--acc);}
+  .swapnote{text-align:center;color:var(--amber);font-size:13px;margin:8px 0 0;min-height:20px;font-weight:600;}
+  #actions{position:fixed;left:0;right:0;bottom:0;z-index:10;
+    background:rgba(13,15,20,.97);border-top:1px solid var(--line);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));}
+  #actions .inner{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);
+    min-height:52px;font-size:16px;font-weight:700;color:var(--txt);background:var(--panel2);}
+  button:active{transform:scale(.97);}
+  #btnAccept{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+  #btnSwap{background:var(--panel2);}
+  #btnSkip{border-color:var(--mut);color:var(--mut);}
+  #btnAll{grid-column:1/-1;min-height:44px;font-size:14px;background:transparent;color:var(--mut);}
+  #doneview{display:none;text-align:center;}
+  #doneview .code{font-family:ui-monospace,monospace;font-size:22px;font-weight:800;letter-spacing:1px;
+    background:var(--panel);border:1px dashed var(--acc);border-radius:12px;
+    padding:16px 10px;margin:14px 0;word-break:break-all;color:#fff;}
+  #doneview p{color:var(--mut);font-size:14px;line-height:1.6;}
+  #btnCopy{background:var(--acc);border:none;color:#0d0f14;min-height:56px;font-size:17px;width:100%;}
+  #sumlist{text-align:left;margin:0 0 16px;padding:0;list-style:none;font-size:13px;}
+  #sumlist li{padding:7px 10px;border-bottom:1px solid var(--line);color:var(--mut);}
+  #sumlist li b{color:var(--txt);}
+  .A{color:var(--red);font-weight:700;} .S{color:var(--amber);font-weight:700;} .X{color:var(--mut);font-weight:700;}
+  .err{color:var(--red);font-size:13px;margin-top:8px;min-height:18px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>DUP<span class="b">REVIEW</span></h1>
+    <div class="prog"><i id="bar"></i></div>
+    <div class="cnt" id="cnt"></div>
+  </div>
+</header>
+<main>
+  <section id="loader">
+    <div class="hint">Paste a batch JSON from Sebastian, then hit <b>Load batch</b>.<br>
+    Format: <code>{"batch":"B7","pairs":[{"del":{...},"keep":{...},"note":"..."}]}</code> —
+    each side needs <code>id</code> (Drive file id), <code>name</code>, <code>size</code>,
+    <code>md5</code>, <code>path</code>, <code>w</code>, <code>h</code>, <code>created</code>.</div>
+    <textarea id="batchjson" placeholder='{"batch":"B7","pairs":[...]}'></textarea>
+    <div class="err" id="loaderr"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <button id="btnLoad" style="background:var(--acc);border:none;color:#0d0f14;">Load batch</button>
+      <button id="btnDemo">Try demo</button>
+    </div>
+  </section>
+  <section id="pairview">
+    <div class="pairhead"><h2 id="ptitle">Pair 1</h2><span class="note" id="pnote"></span></div>
+    <div class="imgs">
+      <figure class="del" id="figL">
+        <div class="tag"><span>✕ DELETE</span><span id="tagL">worst</span></div>
+        <img id="imgL" alt="delete candidate">
+        <figcaption id="capL"></figcaption>
+      </figure>
+      <figure class="keep" id="figR">
+        <div class="tag"><span>✓ KEEP</span><span id="tagR">best</span></div>
+        <img id="imgR" alt="keep candidate">
+        <figcaption id="capR"></figcaption>
+      </figure>
+    </div>
+    <div class="swapnote" id="swapnote"></div>
+  </section>
+  <section id="doneview">
+    <h2 style="margin:6px 0;">Batch complete</h2>
+    <p>Paste this code back to Sebastian — he'll trash the losers as one grouped batch.</p>
+    <div class="code" id="code"></div>
+    <button id="btnCopy">Copy code</button>
+    <ul id="sumlist"></ul>
+    <button id="btnAgain" style="width:100%;">Review another batch</button>
+  </section>
+</main>
+<div id="actions" style="display:none;">
+  <div class="inner">
+    <button id="btnAccept">✕ Accept<br><small>delete left</small></button>
+    <button id="btnSwap">⇄ Swap<br><small>delete right</small></button>
+    <button id="btnSkip">⊘ Skip<br><small>no action</small></button>
+    <button id="btnAll">Accept all remaining pairs</button>
+  </div>
+</div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const thumb=id=>`https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
+const view=id=>`https://drive.google.com/file/d/${id}/view`;
+const fmt=n=>n==null?"?":n>=1048576?(n/1048576).toFixed(1)+" MB":n>=1024?(n/1024).toFixed(0)+" KB":n+" B";
+let batch=null, idx=0, decisions=[], swapped=false, imgOverride=null;
+function capHTML(s){
+  return `<div class="fn">${s.name||"?"}</div>`+
+    `${fmt(s.size)} · ${s.w||"?"}×${s.h||"?"} px<br>`+
+    `md5 <code>${(s.md5||"?").slice(0,12)}</code> · ${s.created||""}<br>`+
+    `<span style="word-break:break-all">${s.path||""}</span><br>`+
+    (s.id?`<a href="${view(s.id)}" target="_blank" rel="noopener">open in Drive ↗</a>`:"");
+}
+function render(){
+  const p=batch.pairs[idx], L=swapped?p.keep:p.del, R=swapped?p.del:p.keep;
+  $("ptitle").textContent=`Pair ${idx+1} / ${batch.pairs.length}`;
+  $("pnote").textContent=p.note||"";
+  $("swapnote").textContent=swapped?"↔ swapped — RIGHT will be deleted":"";
+  $("imgL").src=thumb(L.id); $("imgR").src=thumb(R.id);
+  if(imgOverride){const o=imgOverride(idx,swapped);$("imgL").src=o[0];$("imgR").src=o[1];}
+  $("imgL").onerror=()=>{$("imgL").alt="thumbnail blocked — use Drive link below";};
+  $("imgR").onerror=()=>{$("imgR").alt="thumbnail blocked — use Drive link below";};
+  $("capL").innerHTML=capHTML(L); $("capR").innerHTML=capHTML(R);
+  $("bar").style.width=(idx/batch.pairs.length*100)+"%";
+  $("cnt").textContent=`${batch.id} · ${idx+1}/${batch.pairs.length}`;
+}
+function decide(d){
+  decisions[idx]=d; swapped=false; idx++;
+  if(idx>=batch.pairs.length) finish(); else render();
+}
+function finish(){
+  $("pairview").style.display="none"; $("actions").style.display="none";
+  const code=`${batch.id}:`+decisions.join("");
+  $("code").textContent=code;
+  $("sumlist").innerHTML=batch.pairs.map((p,i)=>{
+    const d=decisions[i], lbl=d==="A"?'<span class="A">DELETE left</span>':d==="S"?'<span class="S">DELETE right (swapped)</span>':'<span class="X">skip</span>';
+    const dead=d==="A"?p.del.name:d==="S"?p.keep.name:"—";
+    return `<li><b>${i+1}.</b> ${lbl} · <span style="word-break:break-all">${dead}</span></li>`;
+  }).join("");
+  $("doneview").style.display="block";
+  $("bar").style.width="100%";
+  window.scrollTo(0,0);
+}
+function startBatch(b){
+  batch=b; idx=0; decisions=new Array(b.pairs.length).fill("X"); swapped=false;
+  $("loader").style.display="none"; $("doneview").style.display="none";
+  $("pairview").style.display="block"; $("actions").style.display="block";
+  render(); window.scrollTo(0,0);
+}
+$("btnLoad").onclick=()=>{
+  $("loaderr").textContent="";
+  try{
+    const b=JSON.parse($("batchjson").value);
+    if(!b.pairs||!b.pairs.length) throw new Error("no pairs array");
+    b.id=b.batch||b.id||"B?";
+    imgOverride=null;
+    startBatch(b);
+  }catch(e){ $("loaderr").textContent="Bad JSON: "+e.message; }
+};
+$("btnDemo").onclick=()=>{
+  const P=[];
+  for(let i=1;i<=10;i++) P.push({
+    note:i%3===0?"Pixel-verified · near identical":"Exact MD5 match",
+    del:{id:"demo",name:`IMG_20240${i}_a.jpg`,size:2430000+i*137,w:4032,h:3024,md5:"d41d8cd98f00b204e9800998ecf8427e",path:"Vault/Photos/2024/",created:"2024-03-0"+i},
+    keep:{id:"demo",name:`IMG_20240${i}_b.jpg`,size:2430000+i*137,w:4032,h:3024,md5:"d41d8cd98f00b204e9800998ecf8427e",path:"Vault/Photos/2024/",created:"2024-03-0"+i}
+  });
+  imgOverride=(i,sw)=>{
+    const a=`https://picsum.photos/seed/dup${i}a/900/675`, b=`https://picsum.photos/seed/dup${i}b/900/675`;
+    return sw?[b,a]:[a,b];
+  };
+  startBatch({id:"DEMO",pairs:P});
+};
+$("btnAccept").onclick=()=>decide("A");
+$("btnSkip").onclick=()=>decide("X");
+$("btnSwap").onclick=()=>{ if(!swapped){swapped=true;render();} else decide("S"); };
+$("btnAll").onclick=()=>{while(idx<batch.pairs.length){decisions[idx]="A";idx++;}finish();};
+$("btnCopy").onclick=async()=>{
+  const t=$("code").textContent;
+  try{await navigator.clipboard.writeText(t);$("btnCopy").textContent="Copied ✓";}
+  catch(e){const r=document.createRange();r.selectNode($("code"));getSelection().removeAllRanges();getSelection().addRange(r);$("btnCopy").textContent="Select + copy manually";}
+};
+$("btnAgain").onclick=()=>location.reload();
+document.addEventListener("keydown",e=>{
+  if($("pairview").style.display!=="block")return;
+  const k=e.key.toLowerCase();
+  if(k==="a"||k==="arrowleft")decide("A");
+  else if(k==="x"||k==="arrowright")decide("X");
+  else if(k==="s"){ if(!swapped){swapped=true;render();} else decide("S"); }
+  else if(k==="enter"&&swapped)decide("S");
+});
+</script>
+</body>
+</html>
