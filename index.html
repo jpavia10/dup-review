@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dup Review — 10-pair batches</title>
+<title>Dup Review — Photo Duplicates</title>
+<meta name="description" content="Review 10 duplicate photo pairs at a time: accept, swap, or skip.">
+<meta name="theme-color" content="#0d0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DupReview">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
   :root{
     --bg:#0d0f14; --panel:#161a23; --panel2:#1d2330; --line:#2a3142;
@@ -24,10 +33,12 @@
   .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#9d7aff);transition:width .25s;}
   .cnt{font-size:13px;color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums;}
   main{max-width:1060px;margin:0 auto;padding:14px 14px 120px;}
+  /* loader */
   #loader textarea{width:100%;min-height:130px;background:var(--panel);color:var(--txt);
     border:1px solid var(--line);border-radius:10px;padding:10px;font-family:ui-monospace,monospace;font-size:12px;}
   #loader .hint{color:var(--mut);font-size:13px;margin:8px 0 14px;line-height:1.5;}
   #loader .hint code{color:var(--acc);font-size:12px;}
+  /* pair */
   #pairview{display:none;}
   .pairhead{display:flex;align-items:baseline;gap:10px;margin:2px 0 10px;}
   .pairhead h2{margin:0;font-size:18px;}
@@ -46,6 +57,7 @@
   figcaption .fn{color:var(--txt);font-weight:600;word-break:break-all;}
   figcaption a{color:var(--acc);}
   .swapnote{text-align:center;color:var(--amber);font-size:13px;margin:8px 0 0;min-height:20px;font-weight:600;}
+  /* action bar */
   #actions{position:fixed;left:0;right:0;bottom:0;z-index:10;
     background:rgba(13,15,20,.97);border-top:1px solid var(--line);
     padding:10px 14px calc(10px + env(safe-area-inset-bottom));}
@@ -57,6 +69,7 @@
   #btnSwap{background:var(--panel2);}
   #btnSkip{border-color:var(--mut);color:var(--mut);}
   #btnAll{grid-column:1/-1;min-height:44px;font-size:14px;background:transparent;color:var(--mut);}
+  /* done */
   #doneview{display:none;text-align:center;}
   #doneview .code{font-family:ui-monospace,monospace;font-size:22px;font-weight:800;letter-spacing:1px;
     background:var(--panel);border:1px dashed var(--acc);border-radius:12px;
@@ -79,11 +92,19 @@
   </div>
 </header>
 <main>
+  <!-- LOAD -->
   <section id="loader">
-    <div class="hint">Paste a batch JSON from Sebastian, then hit <b>Load batch</b>.<br>
-    Format: <code>{"batch":"B7","pairs":[{"del":{...},"keep":{...},"note":"..."}]}</code> —
+    <div class="hint">Batches live on Drive in <b>Sebastian/Dup Review/batches/</b> — paste a Drive file ID
+    or share link, or open a link like
+    <code>https://jpavia10.github.io/dup-review/?drive=FILE_ID</code>.<br>
+    Batch format: <code>{"batch":"B7","pairs":[{"del":{...},"keep":{...},"note":"..."}]}</code> —
     each side needs <code>id</code> (Drive file id), <code>name</code>, <code>size</code>,
-    <code>md5</code>, <code>path</code>, <code>w</code>, <code>h</code>, <code>created</code>.</div>
+    <code>md5</code>, <code>path</code>, <code>w</code>, <code>h</code>, <code>created</code>.
+    (Raw JSON paste still works below as a fallback.)</div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:10px;">
+      <input id="driveid" placeholder="Drive file ID or share link…" style="background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:0 12px;font:inherit;min-height:52px;min-width:0;">
+      <button id="btnDrive" style="background:var(--acc);border:none;color:#0d0f14;white-space:nowrap;">Load from Drive</button>
+    </div>
     <textarea id="batchjson" placeholder='{"batch":"B7","pairs":[...]}'></textarea>
     <div class="err" id="loaderr"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
@@ -91,6 +112,8 @@
       <button id="btnDemo">Try demo</button>
     </div>
   </section>
+
+  <!-- PAIR -->
   <section id="pairview">
     <div class="pairhead"><h2 id="ptitle">Pair 1</h2><span class="note" id="pnote"></span></div>
     <div class="imgs">
@@ -107,6 +130,8 @@
     </div>
     <div class="swapnote" id="swapnote"></div>
   </section>
+
+  <!-- DONE -->
   <section id="doneview">
     <h2 style="margin:6px 0;">Batch complete</h2>
     <p>Paste this code back to Sebastian — he'll trash the losers as one grouped batch.</p>
@@ -116,6 +141,7 @@
     <button id="btnAgain" style="width:100%;">Review another batch</button>
   </section>
 </main>
+
 <div id="actions" style="display:none;">
   <div class="inner">
     <button id="btnAccept">✕ Accept<br><small>delete left</small></button>
@@ -124,6 +150,7 @@
     <button id="btnAll">Accept all remaining pairs</button>
   </div>
 </div>
+
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
@@ -131,6 +158,7 @@ const thumb=id=>`https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
 const view=id=>`https://drive.google.com/file/d/${id}/view`;
 const fmt=n=>n==null?"?":n>=1048576?(n/1048576).toFixed(1)+" MB":n>=1024?(n/1024).toFixed(0)+" KB":n+" B";
 let batch=null, idx=0, decisions=[], swapped=false, imgOverride=null;
+
 function capHTML(s){
   return `<div class="fn">${s.name||"?"}</div>`+
     `${fmt(s.size)} · ${s.w||"?"}×${s.h||"?"} px<br>`+
@@ -184,6 +212,37 @@ $("btnLoad").onclick=()=>{
     startBatch(b);
   }catch(e){ $("loaderr").textContent="Bad JSON: "+e.message; }
 };
+function driveIdFrom(s){
+  s=(s||"").trim();
+  let m=s.match(/[?&]id=([a-zA-Z0-9_-]+)/)||s.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m?m[1]:(/^[a-zA-Z0-9_-]{10,}$/.test(s)?s:null);
+}
+async function loadFromDrive(raw){
+  $("loaderr").textContent="";
+  const id=driveIdFrom(raw);
+  if(!id){$("loaderr").textContent="Couldn't find a Drive file ID in that.";return;}
+  const urls=[
+    `https://drive.usercontent.google.com/u/0/uc?id=${id}&export=download`,
+    `https://drive.google.com/uc?export=download&id=${id}`
+  ];
+  for(const u of urls){
+    try{
+      const r=await fetch(u);
+      if(!r.ok) continue;
+      const b=await r.json();
+      if(!b.pairs||!b.pairs.length) throw new Error("no pairs array");
+      b.id=b.batch||b.id||"B?";
+      imgOverride=null;
+      startBatch(b); return;
+    }catch(e){ /* try next */ }
+  }
+  $("loaderr").textContent="Couldn't fetch that file — make sure it's shared as 'Anyone with the link'.";
+}
+$("btnDrive").onclick=()=>loadFromDrive($("driveid").value);
+(function(){
+  const q=new URLSearchParams(location.search).get("drive");
+  if(q) loadFromDrive(q);
+})();
 $("btnDemo").onclick=()=>{
   const P=[];
   for(let i=1;i<=10;i++) P.push({
@@ -199,6 +258,7 @@ $("btnDemo").onclick=()=>{
 };
 $("btnAccept").onclick=()=>decide("A");
 $("btnSkip").onclick=()=>decide("X");
+// Swap is two-tap: first tap flips the preview, second tap confirms delete-right.
 $("btnSwap").onclick=()=>{ if(!swapped){swapped=true;render();} else decide("S"); };
 $("btnAll").onclick=()=>{while(idx<batch.pairs.length){decisions[idx]="A";idx++;}finish();};
 $("btnCopy").onclick=async()=>{
