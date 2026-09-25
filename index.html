@@ -232,6 +232,7 @@ async function loadFromDrive(raw){
   const id=driveIdFrom(raw);
   if(!id){$("loaderr").textContent="Couldn't find a Drive file ID in that.";return;}
   const urls=[
+    `https://drive.usercontent.google.com/download?id=${id}`,
     `https://drive.usercontent.google.com/u/0/uc?id=${id}&export=download`,
     `https://drive.google.com/uc?export=download&id=${id}`
   ];
