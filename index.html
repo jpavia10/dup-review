@@ -94,11 +94,10 @@
 <main>
   <!-- LOAD -->
   <section id="loader">
-    <div class="hint">The review queue is <b>one file</b> on Drive:
-    <b>Sebastian/Dup Review/batches/queue.json</b> — paste its file ID or share link,
-    or open a link like <code>https://jpavia10.github.io/dup-review/?drive=FILE_ID</code>.
-    The page takes the first 10 pairs; reviewed pairs are removed from the queue
-    when the decision code is processed.<br>
+    <div class="hint">The review queue loads <b>automatically</b> from Drive
+    (<b>Sebastian/Dup Review/batches/queue.json</b>). If it fails to load, paste the
+    file ID or a share link below, or open
+    <code>https://jpavia10.github.io/dup-review/?drive=FILE_ID</code>.<br>
     Queue format: <code>{"queue":"dup-review","pairs":[{"del":{...},"keep":{...},"note":"..."}]}</code> —
     each side needs <code>id</code> (Drive file id), <code>name</code>, <code>size</code>,
     <code>md5</code>, <code>path</code>, <code>w</code>, <code>h</code>, <code>created</code>.
@@ -229,7 +228,7 @@ function driveIdFrom(s){
   return m?m[1]:(/^[a-zA-Z0-9_-]{10,}$/.test(s)?s:null);
 }
 async function loadFromDrive(raw){
-  $("loaderr").textContent="";
+  $("loaderr").textContent="Loading queue…";
   const id=driveIdFrom(raw);
   if(!id){$("loaderr").textContent="Couldn't find a Drive file ID in that.";return;}
   const urls=[
@@ -251,8 +250,9 @@ async function loadFromDrive(raw){
 }
 $("btnDrive").onclick=()=>loadFromDrive($("driveid").value);
 (function(){
+  const DEFAULT_QUEUE_ID="1M2u9hAaQrRU1tEKERUjW78k7m64oFYV0"; // Sebastian/Dup Review/batches/queue.json
   const q=new URLSearchParams(location.search).get("drive");
-  if(q) loadFromDrive(q);
+  loadFromDrive(q||DEFAULT_QUEUE_ID);
 })();
 $("btnDemo").onclick=()=>{
   const P=[];
